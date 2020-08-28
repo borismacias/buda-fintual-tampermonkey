@@ -45,35 +45,25 @@ function buildMenuCommands() {
   GM_registerMenuCommand('Cambiar API Secret', changeApiSecret);
 }
 
+
 function changeApiKey() {
   promptAndChangeStoredValue('Api key', 'apiKey');
-  rebuildBitcoinContainerInnerHtml('new amount')
+  rebuildBitcoinContainerInnerHtml('Recarga la página 🙏🏼')
 }
 
 function changeApiSecret() {
   promptAndChangeStoredValue('Api secret', 'apiSecret');
-  rebuildBitcoinContainerInnerHtml('new amount')
+  rebuildBitcoinContainerInnerHtml('Recarga la página 🙏🏼')
 }
-
-function currencyFormatted(amount, decimalCount = 0, decimal = ",", thousands = ".") {
-  try {
-    decimalCount = Math.abs(decimalCount);
-    decimalCount = isNaN(decimalCount) ? 2 : decimalCount;
-
-    const negativeSign = amount < 0 ? "-" : "";
-
-    let i = parseInt(amount = Math.abs(Number(amount) || 0).toFixed(decimalCount)).toString();
-    let j = (i.length > 3) ? i.length % 3 : 0;
-
-    return '$ ' + negativeSign + (j ? i.substr(0, j) + thousands : '') + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + thousands) + (decimalCount ? decimal + Math.abs(amount - i).toFixed(decimalCount).slice(2) : "");
-  } catch (e) {
-    console.log(e)
-  }
-};
 
 function promptAndChangeStoredValue(userPrompt, setValVarName) {
   let targVar = prompt('Cambiar ' + userPrompt, '');
   GM_setValue(setValVarName, encryptAndStore(targVar));
+}
+
+function rebuildBitcoinContainerInnerHtml(amount) {
+  let bitcoinContainer = document.getElementById('bitcoin-container');
+  bitcoinContainer.innerHTML = buildHTML(amount)
 }
 
 function decodeOrPrompt(targVar, userPrompt, setValVarName) {
@@ -95,11 +85,6 @@ function encryptAndStore(clearText) {
 function unStoreAndDecrypt(jsonObj) {
   const encKey = GM_getValue('encKey', '');
   return sjcl.decrypt(encKey, JSON.parse(jsonObj));
-}
-
-function rebuildBitcoinContainerInnerHtml(amount) {
-  let bitcoinContainer = document.getElementById('bitcoin-container');
-  bitcoinContainer.innerHTML = buildHTML(amount)
 }
 
 function fillCapital(key, secret){
@@ -127,34 +112,37 @@ function fillCapital(key, secret){
         method: "POST",
         headers: {
             'Accept': 'application/json',
-            "Content-Type": "application/json",
-            "User-Agent": "lolol"
+            "Content-Type": "application/json"
         },
         url: "https://www.buda.com/api/v2/markets/btc-clp/quotations",
         data: JSON.stringify({type: "bid_given_earned_base",amount: btcAmount + ""}),
         dataType: 'json',
         contentType: 'application/json',
         overrideMimeType: 'application/json',
-        onload: function (response) {
-          console.log("RESPONSE: ", response)
+        onload: function (quotationResponse) {
+          const parsedQuotationResponse = JSON.parse(quotationResponse.responseText);
+          const capital = parsedQuotationResponse.quotation.quote_exchanged[0];
+          rebuildBitcoinContainerInnerHtml(currencyFormattedAmount(capital))
         }
       })
-      // const quotationURL =  'https://blockchain.info/ticker';
-
-      // GM.xmlHttpRequest({
-      //   method: "GET",
-      //   url: quotationURL,
-      //   onload: function(quotationResponse) {
-      //     const parsedQuotationResponse = JSON.parse(quotationResponse.responseText);
-      //     const quotation = parsedQuotationResponse.CLP;
-      //     const btcPrice = quotation.last;
-      //     const capital = Math.round(btcAmount * btcPrice);
-
-      //     rebuildBitcoinContainerInnerHtml(currencyFormatted(capital))
-      //   }
-      // });
     }
   });
+}
+
+function currencyFormattedAmount(amount, decimalCount = 0, decimal = ",", thousands = ".") {
+  try {
+    decimalCount = Math.abs(decimalCount);
+    decimalCount = isNaN(decimalCount) ? 2 : decimalCount;
+
+    const negativeSign = amount < 0 ? "-" : "";
+
+    let i = parseInt(amount = Math.abs(Number(amount) || 0).toFixed(decimalCount)).toString();
+    let j = (i.length > 3) ? i.length % 3 : 0;
+
+    return '$ ' + negativeSign + (j ? i.substr(0, j) + thousands : '') + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + thousands) + (decimalCount ? decimal + Math.abs(amount - i).toFixed(decimalCount).slice(2) : "");
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 function getNonce() {
